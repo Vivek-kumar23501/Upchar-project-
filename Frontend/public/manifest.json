@@ -1,0 +1,22 @@
+{
+  "name": "Upchar — Intelligent Healthcare",
+  "short_name": "Upchar",
+  "description": "AI-powered healthcare platform for rural India — diagnosis, teleconsultation, pharmacy radar.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fff8f5",
+  "theme_color": "#004d37",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "medical", "utilities"],
+  "lang": "en-IN",
+  "dir": "ltr",
+  "scope": "/"
+}

@@ -3,7 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 
 import LandingPage from './pages/LandingPage';
 import AuthInitial from './pages/AuthInitial';
-import AuthRoleSelect from './pages/AuthRoleSelect';
 import AuthLoginForm from './pages/AuthLoginForm';
 import AuthSignupForm from './pages/AuthSignupForm';
 import PatientDashboard from './pages/PatientDashboard';
@@ -26,8 +25,7 @@ function App() {
       <Route path="/" element={<LandingPage />} />
 
       <Route path="/auth" element={<AuthInitial />} />
-      <Route path="/auth/login" element={<AuthRoleSelect />} />
-      <Route path="/auth/login/:role" element={<AuthLoginForm />} />
+      <Route path="/auth/login" element={<AuthLoginForm />} />
       <Route path="/auth/signup" element={<AuthSignupForm />} />
       <Route path="/auth/verify-otp" element={<VerifyOTP />} />
 
