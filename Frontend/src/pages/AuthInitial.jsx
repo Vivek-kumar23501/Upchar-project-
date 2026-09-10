@@ -1,6 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+// Role-based login options — data array outside component
+const loginRoles = [
+  { label: 'Login as User', path: '/auth/login', icon: 'person', color: 'bg-[#04bf36] hover:bg-[#03a02d] shadow-[0_8px_20px_rgba(4,191,54,0.25)]' },
+  { label: 'Login as Hospital', path: '/hospital/login', icon: 'local_hospital', color: 'bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.25)]' },
+  { label: 'Login as Doctor', path: '/doctor/login', icon: 'local_hospital', color: 'bg-blue-600 hover:bg-blue-700 shadow-[0_8px_20px_rgba(37,99,235,0.25)]' },
+  { label: 'Login as Admin', path: '/auth/login', icon: 'admin_panel_settings', color: 'bg-slate-700 hover:bg-slate-800 shadow-[0_8px_20px_rgba(51,65,85,0.25)]' },
+  { label: 'Login as ASHA', path: '/asha/login', icon: 'volunteer_activism', color: 'bg-fuchsia-600 hover:bg-fuchsia-700 shadow-[0_8px_20px_rgba(192,38,211,0.25)]' },
+];
+
 export default function AuthInitial() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/50 to-emerald-100 relative overflow-hidden flex items-center justify-center font-sans">
@@ -93,23 +102,34 @@ export default function AuthInitial() {
             </p>
           </div>
 
-          {/* Buttons Area */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-2 relative z-50">
-            <Link 
-              to="/auth/login"
-              className="flex items-center justify-center gap-2 px-8 py-3.5 md:py-4 rounded-2xl bg-[#04bf36] text-white font-bold shadow-[0_8px_20px_rgba(4,191,54,0.25)] hover:bg-[#03a02d] hover:scale-105 transition-all duration-300 group"
-            >
-              Log In
-              <span className="material-symbols-rounded group-hover:translate-x-1 transition-transform text-[20px]">login</span>
-            </Link>
-            
-            <Link 
-              to="/auth/signup"
-              className="flex items-center justify-center gap-2 px-8 py-3.5 md:py-4 rounded-2xl bg-blue-600 text-white font-bold shadow-[0_8px_20px_rgba(37,99,235,0.25)] hover:bg-blue-700 hover:scale-105 transition-all duration-300"
-            >
-              <span className="material-symbols-rounded text-[20px]">person_add</span>
-              Create Account
-            </Link>
+          {/* Role-based Login Options */}
+          <div className="w-full sm:w-auto mt-2 relative z-50">
+            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-3">
+              Login as
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
+              {loginRoles.map((role) => (
+
+                <Link
+                  key={role.path}
+                  to={role.path}
+                  className={`flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl text-white font-bold text-sm hover:scale-105 transition-all duration-300 group ${role.color}`}
+                >
+                  <span className="material-symbols-rounded text-[18px]">{role.icon}</span>
+                  {role.label}
+                </Link>
+
+              ))}
+            </div>
+
+            {/* Signup link for new users */}
+            <p className="text-slate-500 text-sm mt-4">
+              Naya account banana hai?{' '}
+              <Link to="/auth/signup" className="text-[#04bf36] font-bold hover:underline">
+                Create Account
+              </Link>
+            </p>
           </div>
         </div>
 

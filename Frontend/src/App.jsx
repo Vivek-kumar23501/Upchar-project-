@@ -15,20 +15,41 @@ import PatientLayout from './components/PatientLayout';
 import DoctorsNearMe from './pages/DoctorsNearMe';
 import AppointmentsDoctor from './pages/AppointmentsDoctor';
 import HealthRecords from './components/HealthRecords';
-
-// ---> 1. ADD THIS IMPORT <---
 import SearchResults from './pages/SearchResults';
+import HospitalLogin from './pages/HospitalLogin';
+import HospitalDashboard from './pages/HospitalDashboard';
+
+import AdminDashboard from './pages/AdminDashboard';
+
+import AshaLogin from './pages/AshaLogin';
+import DoctorLogin from './pages/DoctorLogin';
+
+// ASHA Dashboard
+import AshaDashboard from './pages/AshaDashboard';
+
 
 function App() {
   return (
     <Routes>
+
+      {/* ================= LANDING ================= */}
       <Route path="/" element={<LandingPage />} />
 
+
+      {/* ================= AUTH ================= */}
       <Route path="/auth" element={<AuthInitial />} />
       <Route path="/auth/login" element={<AuthLoginForm />} />
       <Route path="/auth/signup" element={<AuthSignupForm />} />
       <Route path="/auth/verify-otp" element={<VerifyOTP />} />
 
+
+      {/* ================= LOGIN ================= */}
+      <Route path="/hospital/login" element={<HospitalLogin />} />
+      <Route path="/doctor/login" element={<DoctorLogin />} />
+      <Route path="/asha/login" element={<AshaLogin />} />
+
+
+      {/* ================= PATIENT ================= */}
       <Route
         path="/dashboard"
         element={
@@ -38,15 +59,35 @@ function App() {
         }
       >
         <Route index element={<PatientDashboard />} />
-        <Route path="teleconsultation" element={<Teleconsultation />} />
-        <Route path="doctors-near-me" element={<DoctorsNearMe />} />
-        <Route path="health-records" element={<HealthRecords />} />
-        <Route path="appointments" element={<AppointmentsDoctor />} />
-        
-        {/* ---> 2. ADD THIS ROUTE <--- */}
-        <Route path="search" element={<SearchResults />} />
+
+        <Route
+          path="teleconsultation"
+          element={<Teleconsultation />}
+        />
+
+        <Route
+          path="doctors-near-me"
+          element={<DoctorsNearMe />}
+        />
+
+        <Route
+          path="health-records"
+          element={<HealthRecords />}
+        />
+
+        <Route
+          path="appointments"
+          element={<AppointmentsDoctor />}
+        />
+
+        <Route
+          path="search"
+          element={<SearchResults />}
+        />
       </Route>
 
+
+      {/* ================= AI DIAGNOSIS ================= */}
       <Route
         path="/ai-diagnosis"
         element={
@@ -56,14 +97,50 @@ function App() {
         }
       />
 
+
+      {/* ================= DOCTOR ================= */}
       <Route
-        path="/doctor-dashboard"
+        path="/doctor/dashboard"
         element={
           <ProtectedRoute allowedRoles={['doctor']}>
             <DoctorDashboard />
           </ProtectedRoute>
         }
       />
+
+
+      {/* ================= ASHA ================= */}
+      <Route
+        path="/asha/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['asha']}>
+            <AshaDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* ================= ADMIN ================= */}
+      <Route
+        path="/admin-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* ================= HOSPITAL ================= */}
+      <Route
+        path="/hospital/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['hospital']}>
+            <HospitalDashboard />
+          </ProtectedRoute>
+        }
+      />
+
     </Routes>
   );
 }
