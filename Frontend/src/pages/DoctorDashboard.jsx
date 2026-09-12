@@ -93,6 +93,11 @@ export default function DoctorDashboard() {
                     <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#3f4944] hover:bg-[#efe6e2] transition-colors hover:text-[#1e1b18] font-medium">
                         <span className="material-symbols-rounded text-[20px] md:text-[24px]">calendar_month</span> Schedule
                     </a>
+
+                    <a href="/doctor/consultation" className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#3f4944] hover:bg-[#efe6e2] transition-colors hover:text-[#1e1b18] font-medium">
+                        <span className="material-symbols-rounded text-[20px] md:text-[24px]">healing</span> Consultations
+                    </a>
+
                     <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#3f4944] hover:bg-[#efe6e2] transition-colors hover:text-[#1e1b18] font-medium">
                         <span className="material-symbols-rounded text-[20px] md:text-[24px]">science</span> Lab Reports
                     </a>

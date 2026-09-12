@@ -26,7 +26,7 @@ import DoctorLogin from './pages/DoctorLogin';
 
 // ASHA Dashboard
 import AshaDashboard from './pages/AshaDashboard';
-
+import DoctorConsulation from './pages/DoctorConsultation';
 
 function App() {
   return (
@@ -108,6 +108,10 @@ function App() {
         }
       />
 
+     <Route
+          path="/doctor/consultation"
+          element={<DoctorConsulation/>}
+        />
 
       {/* ================= ASHA ================= */}
       <Route

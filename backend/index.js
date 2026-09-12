@@ -16,6 +16,7 @@ import isAdmin from "./middleware/Admin.middleware.js"
 import { addDoctor, getAllDoctors, deleteDoctor,loginDoctor } from "./controller/Doctor.controller.js";
 import { addAsha, getAllAsha, deleteAsha ,loginAsha} from "./controller/Asha.controller.js";
 
+import { generateVideoToken } from "./controller/Video.controller.js";
 
 
 
@@ -87,6 +88,8 @@ app.post("/asha/add", addAsha);
 app.get("/asha/all", getAllAsha);
 app.delete("/asha/:id", deleteAsha);
 app.post("/asha/login", loginAsha);
+
+app.post('/api/video/token',  generateVideoToken)
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`)
