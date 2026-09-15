@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -19,6 +18,10 @@ import {
   X,
   Trash2,
   Plus,
+  ListOrdered,
+  RefreshCw,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
 
 const API_BASE = "http://localhost:8080";
@@ -26,6 +29,7 @@ const API_BASE = "http://localhost:8080";
 // Sidebar navigation sections
 const sidebarSections = [
   { key: "overview", label: "Overview", icon: LayoutDashboard },
+  { key: "queueManagement", label: "Queue Management", icon: ListOrdered },
   { key: "emergency", label: "Emergency", icon: AlertTriangle },
   { key: "managePatient", label: "Manage Patient", icon: UserPlus },
   {
@@ -222,6 +226,31 @@ const ashaFormFields = [
   },
 ];
 
+// Queue status badge styles + flow (matches Appointment.model.js enum)
+const QUEUE_STATUS_STYLES = {
+  pending: "bg-yellow-100 text-yellow-700",
+  forward: "bg-blue-100 text-blue-700",
+  referred: "bg-purple-100 text-purple-700",
+  completed: "bg-green-100 text-green-700",
+};
+
+const QUEUE_STATUS_FLOW = ["pending", "forward", "referred", "completed"];
+
+const QUEUE_SEVERITY_STYLES = {
+  high: "bg-red-100 text-red-700",
+  medium: "bg-yellow-100 text-yellow-700",
+  low: "bg-green-100 text-green-700",
+  unknown: "bg-gray-100 text-gray-600",
+};
+
+const queueStatusFilters = [
+  { label: "Active Queue", value: "" },
+  { label: "Pending", value: "pending" },
+  { label: "Forwarded", value: "forward" },
+  { label: "Referred", value: "referred" },
+  { label: "Completed", value: "completed" },
+];
+
 const HospitalDashboard = () => {
   const navigate = useNavigate();
 
@@ -277,6 +306,21 @@ const HospitalDashboard = () => {
 
   const [ashaError, setAshaError] = useState("");
   const [ashaLoading, setAshaLoading] = useState(false);
+
+  // Queue Management state
+  const [queueAppointments, setQueueAppointments] = useState([]);
+  const [queueError, setQueueError] = useState("");
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queueStatusFilter, setQueueStatusFilter] = useState("");
+  const [updatingAppointmentId, setUpdatingAppointmentId] = useState(null);
+
+  // Forward-to-doctor modal state
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardAppointment, setForwardAppointment] = useState(null);
+  const [forwardDoctors, setForwardDoctors] = useState([]);
+  const [forwardDoctorsLoading, setForwardDoctorsLoading] = useState(false);
+  const [forwardDoctorsError, setForwardDoctorsError] = useState("");
+  const [assigningDoctorId, setAssigningDoctorId] = useState(null);
 
   // ---------------------------------------------------
   // Get logged-in hospital
@@ -348,6 +392,22 @@ const HospitalDashboard = () => {
     }
   };
 
+  // A doctor's hospitalId can come back as a populated object
+  // ({ _id, hospitalName, ... }) or as a raw id string, depending on the
+  // backend. This normalizes both shapes and compares against the given
+  // hospitalId, so only doctors belonging to THIS hospital ever render -
+  // even if the backend's own filtering is loose or missing.
+  const doctorBelongsToHospital = (doctor, hospitalId) => {
+    if (!hospitalId) return false;
+
+    const docHospitalId =
+      typeof doctor?.hospitalId === "object" && doctor?.hospitalId !== null
+        ? doctor.hospitalId._id
+        : doctor?.hospitalId;
+
+    return String(docHospitalId) === String(hospitalId);
+  };
+
   // ---------------------------------------------------
   // Logout
   // ---------------------------------------------------
@@ -404,7 +464,11 @@ const HospitalDashboard = () => {
         return;
       }
 
-      setDoctors(data.doctors || []);
+      setDoctors(
+        (data.doctors || []).filter((doc) =>
+          doctorBelongsToHospital(doc, hospitalId)
+        )
+      );
       setDoctorError("");
     } catch (err) {
       console.error("Fetch Doctors Error:", err);
@@ -846,6 +910,208 @@ const HospitalDashboard = () => {
     }
   };
 
+  // ===================================================
+  // QUEUE MANAGEMENT SECTION
+  // ===================================================
+
+  const fetchQueue = async (statusFilter = queueStatusFilter) => {
+    setQueueLoading(true);
+
+    try {
+      const url = statusFilter
+        ? `${API_BASE}/appointments/queue?status=${encodeURIComponent(
+            statusFilter
+          )}`
+        : `${API_BASE}/appointments/queue`;
+
+      console.log("Fetching queue from:", url);
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: authHeaders(),
+      });
+
+      const data = await res.json();
+
+      console.log("Queue Response:", data);
+
+      if (!res.ok || !data.success) {
+        setQueueError(
+          data.message || "Queue fetch nahi ho payi."
+        );
+
+        return;
+      }
+
+      setQueueAppointments(data.appointments || []);
+      setQueueError("");
+    } catch (err) {
+      console.error("Fetch Queue Error:", err);
+
+      setQueueError(
+        "Server se queue fetch nahi ho payi."
+      );
+    } finally {
+      setQueueLoading(false);
+    }
+  };
+
+  const handleQueueStatusFilterChange = (value) => {
+    setQueueStatusFilter(value);
+    fetchQueue(value);
+  };
+
+  const handleUpdateAppointmentStatus = async (id, nextStatus) => {
+    setUpdatingAppointmentId(id);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/appointments/${id}/status`,
+        {
+          method: "PATCH",
+          headers: authHeaders(),
+          body: JSON.stringify({ status: nextStatus }),
+        }
+      );
+
+      const data = await res.json();
+
+      console.log("Update Appointment Status Response:", data);
+
+      if (!res.ok || !data.success) {
+        setQueueError(
+          data.message || "Status update nahi ho paya."
+        );
+
+        return;
+      }
+
+      // Refresh so ordering + filtered view stay correct
+      // (e.g. a completed case should drop out of the active view).
+      await fetchQueue(queueStatusFilter);
+    } catch (err) {
+      console.error("Update Appointment Status Error:", err);
+
+      setQueueError(
+        "Server se connect nahi ho paya."
+      );
+    } finally {
+      setUpdatingAppointmentId(null);
+    }
+  };
+
+  // ---------------------------------------------------
+  // Forward-to-doctor flow
+  // ---------------------------------------------------
+
+  // Opens the "select a doctor" modal for a given queue appointment and
+  // loads this hospital's doctors so the hospital can pick one.
+  const openForwardModal = async (appt) => {
+    setForwardAppointment(appt);
+    setShowForwardModal(true);
+    setForwardDoctorsError("");
+    setForwardDoctorsLoading(true);
+
+    try {
+      const hospitalId = getHospitalId();
+
+      if (!hospitalId) {
+        setForwardDoctorsError(
+          "Hospital ID nahi mila. Please login again."
+        );
+        return;
+      }
+
+      const res = await fetch(
+        `${API_BASE}/doctor/all?hospitalId=${encodeURIComponent(
+          hospitalId
+        )}`,
+        {
+          method: "GET",
+          headers: authHeaders(),
+        }
+      );
+
+      const data = await res.json();
+
+      console.log("Doctors For Forward Response:", data);
+
+      if (!res.ok || !data.success) {
+        setForwardDoctorsError(
+          data.message || "Doctors fetch nahi ho paye."
+        );
+        return;
+      }
+
+      setForwardDoctors(
+        (data.doctors || []).filter((doc) =>
+          doctorBelongsToHospital(doc, hospitalId)
+        )
+      );
+    } catch (err) {
+      console.error("Fetch Doctors For Forward Error:", err);
+
+      setForwardDoctorsError(
+        "Server se doctors fetch nahi ho paye."
+      );
+    } finally {
+      setForwardDoctorsLoading(false);
+    }
+  };
+
+  const closeForwardModal = () => {
+    setShowForwardModal(false);
+    setForwardAppointment(null);
+    setForwardDoctors([]);
+    setForwardDoctorsError("");
+  };
+
+  // Assigns the selected doctor to the appointment and moves its status
+  // to "forward" in one call, so the patient becomes connected to that doctor.
+  const handleAssignDoctor = async (doctor) => {
+    if (!forwardAppointment) return;
+
+    setAssigningDoctorId(doctor._id);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/appointments/${forwardAppointment._id}/status`,
+        {
+          method: "PATCH",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            status: "forward",
+            doctorId: doctor._id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      console.log("Assign Doctor Response:", data);
+
+      if (!res.ok || !data.success) {
+        setForwardDoctorsError(
+          data.message || "Doctor assign nahi ho paya."
+        );
+        return;
+      }
+
+      closeForwardModal();
+
+      // Refresh so the queue reflects the new status + assigned doctor.
+      await fetchQueue(queueStatusFilter);
+    } catch (err) {
+      console.error("Assign Doctor Error:", err);
+
+      setForwardDoctorsError(
+        "Server se connect nahi ho paya."
+      );
+    } finally {
+      setAssigningDoctorId(null);
+    }
+  };
+
   // ---------------------------------------------------
   // Fetch data when section changes
   // ---------------------------------------------------
@@ -857,6 +1123,10 @@ const HospitalDashboard = () => {
 
     if (activeSection === "manageAsha") {
       fetchAshaWorkers();
+    }
+
+    if (activeSection === "queueManagement") {
+      fetchQueue(queueStatusFilter);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1662,11 +1932,345 @@ const HospitalDashboard = () => {
   );
 
   // ===================================================
+  // QUEUE MANAGEMENT
+  // ===================================================
+
+  const renderQueueManagement = () => {
+    const highRiskCount = queueAppointments.filter(
+      (appt) =>
+        appt.severity === "high" ||
+        (typeof appt.riskScore === "number" &&
+          appt.riskScore >= 0.75)
+    ).length;
+
+    return (
+      <div className="space-y-6">
+        {/* Header + refresh */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-orange-100 p-2.5 rounded-full">
+              <ListOrdered
+                className="text-orange-600"
+                size={20}
+              />
+            </div>
+
+            <div>
+              <h2 className="font-semibold text-gray-800 text-lg">
+                Queue Management
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Sabse zyada risk wale patients sabse upar dikhte hain.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => fetchQueue(queueStatusFilter)}
+            disabled={queueLoading}
+            className="flex items-center gap-2 text-sm font-medium text-gray-600 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 transition disabled:opacity-60"
+          >
+            <RefreshCw
+              size={15}
+              className={queueLoading ? "animate-spin" : ""}
+            />
+            Refresh
+          </button>
+        </div>
+
+        {/* Summary strip */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <p className="text-xs text-gray-500 font-medium">
+              In Queue
+            </p>
+            <p className="text-2xl font-semibold text-gray-800 mt-1">
+              {queueAppointments.length}
+            </p>
+          </div>
+
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-6">
+            <p className="text-xs text-red-600 font-medium flex items-center gap-1">
+              <AlertTriangle size={12} /> High Risk Cases
+            </p>
+            <p className="text-2xl font-semibold text-red-700 mt-1">
+              {highRiskCount}
+            </p>
+          </div>
+        </div>
+
+        {/* Status filter pills */}
+        <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-wrap gap-2">
+          {queueStatusFilters.map((filter) => (
+            <button
+              key={filter.value || "active"}
+              onClick={() =>
+                handleQueueStatusFilterChange(filter.value)
+              }
+              className={`text-xs font-medium px-3.5 py-2 rounded-full transition ${
+                queueStatusFilter === filter.value
+                  ? "bg-orange-600 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        {queueError && (
+          <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-lg">
+            {queueError}
+          </div>
+        )}
+
+        {/* Queue list */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          {queueLoading && queueAppointments.length === 0 ? (
+            <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center">
+              <p className="text-sm text-gray-400">
+                Queue load ho rahi hai...
+              </p>
+            </div>
+          ) : queueAppointments.length === 0 ? (
+            <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center">
+              <p className="text-sm text-gray-400">
+                Is filter me abhi koi appointment nahi hai.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {queueAppointments.map((appt) => {
+                const severityKey =
+                  QUEUE_SEVERITY_STYLES[appt.severity]
+                    ? appt.severity
+                    : "unknown";
+
+                const currentIndex = QUEUE_STATUS_FLOW.indexOf(
+                  appt.status
+                );
+
+                const nextStatus =
+                  currentIndex >= 0 &&
+                  currentIndex < QUEUE_STATUS_FLOW.length - 1
+                    ? QUEUE_STATUS_FLOW[currentIndex + 1]
+                    : null;
+
+                const patientName =
+                  appt.fullName ||
+                  appt.userId?.fullname ||
+                  "Unknown patient";
+
+                const phone =
+                  appt.phone || appt.userId?.mobile || "N/A";
+
+                // Assigned doctor may come back under different shapes
+                // depending on whether the backend populates the field.
+                const assignedDoctorName =
+                  appt.doctorName ||
+                  appt.doctor?.doctorName ||
+                  appt.doctorId?.doctorName ||
+                  null;
+
+                return (
+                  <div
+                    key={appt._id}
+                    className="border border-gray-100 rounded-xl p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-gray-800">
+                            {patientName}
+                          </p>
+
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${QUEUE_SEVERITY_STYLES[severityKey]}`}
+                          >
+                            {appt.severity || "unknown"}
+                          </span>
+
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${
+                              QUEUE_STATUS_STYLES[appt.status] ||
+                              QUEUE_STATUS_STYLES.pending
+                            }`}
+                          >
+                            {appt.status}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-gray-500 mt-1">
+                          {appt.disease || "Disease not specified"} •{" "}
+                          {phone}
+                        </p>
+
+                        <p className="text-xs text-gray-400 mt-1">
+                          Confidence: {appt.confidence || "N/A"} • Risk
+                          Score:{" "}
+                          {typeof appt.riskScore === "number"
+                            ? appt.riskScore.toFixed(2)
+                            : "N/A"}
+                        </p>
+
+                        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                          <Clock size={11} />
+                          {appt.preferredDate}
+                          {appt.preferredTime
+                            ? ` • ${appt.preferredTime}`
+                            : ""}
+                        </p>
+
+                        {appt.matchedSymptoms &&
+                          appt.matchedSymptoms.length > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Symptoms:{" "}
+                              {appt.matchedSymptoms.join(", ")}
+                            </p>
+                          )}
+
+                        {assignedDoctorName && (
+                          <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                            <Stethoscope size={11} />
+                            Assigned to Dr. {assignedDoctorName}
+                          </p>
+                        )}
+                      </div>
+
+                      {nextStatus && (
+                        <button
+                          onClick={() =>
+                            nextStatus === "forward"
+                              ? openForwardModal(appt)
+                              : handleUpdateAppointmentStatus(
+                                  appt._id,
+                                  nextStatus
+                                )
+                          }
+                          disabled={
+                            updatingAppointmentId === appt._id
+                          }
+                          className="flex-shrink-0 flex items-center gap-1.5 bg-green-600 text-white text-xs font-medium px-3 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-60"
+                        >
+                          {updatingAppointmentId === appt._id ? (
+                            "Updating..."
+                          ) : nextStatus === "forward" ? (
+                            <>
+                              <Stethoscope size={13} />
+                              Forward to Doctor
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 size={13} />
+                              Mark {nextStatus}
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Forward-to-doctor: select doctor modal */}
+        {showForwardModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-gray-800 text-lg">
+                    Select Doctor
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {forwardAppointment?.fullName ||
+                      forwardAppointment?.userId?.fullname ||
+                      "Patient"}{" "}
+                    ko doctor ke pass forward karein.
+                  </p>
+                </div>
+
+                <button
+                  onClick={closeForwardModal}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {forwardDoctorsError && (
+                <div className="bg-red-50 text-red-600 text-sm px-4 py-2 rounded-lg mb-4">
+                  {forwardDoctorsError}
+                </div>
+              )}
+
+              {forwardDoctorsLoading ? (
+                <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center">
+                  <p className="text-sm text-gray-400">
+                    Doctors load ho rahe hain...
+                  </p>
+                </div>
+              ) : forwardDoctors.length === 0 ? (
+                <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center">
+                  <p className="text-sm text-gray-400">
+                    Is hospital me abhi koi doctor registered nahi hai.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {forwardDoctors.map((doc) => (
+                    <div
+                      key={doc._id}
+                      className="flex items-center justify-between gap-4 border border-gray-100 rounded-xl p-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-800">
+                          {doc.doctorName}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {doc.specialization} • {doc.qualification}
+                        </p>
+                        {doc.department && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {doc.department}
+                          </p>
+                        )}
+                        {doc.availableTime && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            {doc.availableTime}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleAssignDoctor(doc)}
+                        disabled={assigningDoctorId === doc._id}
+                        className="flex-shrink-0 bg-indigo-600 text-white text-xs font-medium px-3.5 py-2 rounded-lg hover:bg-indigo-700 transition disabled:opacity-60"
+                      >
+                        {assigningDoctorId === doc._id
+                          ? "Assigning..."
+                          : "Select"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ===================================================
   // SECTION RENDERERS
   // ===================================================
 
   const sectionRenderers = {
     overview: renderOverview,
+    queueManagement: renderQueueManagement,
     emergency: renderEmergency,
     managePatient: renderManagePatient,
     doctorReferral: renderDoctorReferral,

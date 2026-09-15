@@ -25,6 +25,11 @@ const AppointmentSchema = new mongoose.Schema(
     age: {
       type: Number,
     },
+    hospitalId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "auth",
+  required: [true, "Please select a hospital"],
+},
     gender: {
       type: String,
       enum: ["male", "female", "other", ""],
@@ -42,6 +47,33 @@ const AppointmentSchema = new mongoose.Schema(
       type: String,
       enum: ["low", "medium", "high", "unknown", ""],
       default: "unknown",
+    },
+    confidence: {
+      type: String,
+      enum: ["high", "medium", "low", ""],
+      default: "",
+    },
+    riskScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: null,
+    },
+    symptomScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: null,
+    },
+    vectorScore: {
+      type: Number,
+      min: 0,
+      max: 1,
+      default: null,
+    },
+    matchedSymptoms: {
+      type: [String],
+      default: [],
     },
     reason: {
       type: String,

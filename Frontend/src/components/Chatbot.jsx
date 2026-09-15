@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowLeft,
   Bookmark,
+  Building2,
   Calendar,
   CheckCircle2,
   FileText,
@@ -40,6 +41,9 @@ const CHAT_SESSIONS_URL = `${NODE_API_BASE}/chat/sessions`;
 
 // NOTE: point this at your real appointment-booking endpoint.
 const BOOK_APPOINTMENT_URL = `${NODE_API_BASE}/appointments/book`;
+
+// NOTE: point this at your real hospital-listing endpoint.
+const HOSPITAL_LIST_URL = `${NODE_API_BASE}/hospital/all`;
 
 // ============================================================
 // AUTH TOKEN
@@ -251,6 +255,25 @@ async function bookAppointmentRequest(payload) {
         : error.message
     );
   }
+}
+
+// ============================================================
+// FETCH HOSPITAL LIST (Node backend)
+// ============================================================
+
+async function fetchHospitalsRequest() {
+  const response = await fetch(HOSPITAL_LIST_URL, {
+    method: "GET",
+    headers: getAuthHeaders(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || "Could not load hospitals.");
+  }
+
+  return data.hospitals || [];
 }
 
 // ============================================================
@@ -475,6 +498,21 @@ function ResultCard({ result, onBookAppointment }) {
     unknown: "bg-[#eceff1] text-[#56616e]",
   };
 
+  // Pull the top-ranked candidate's hybrid score, if debug info is present.
+  const topCandidate = result._debug?.candidates?.[0];
+
+  function handleBookClick() {
+    onBookAppointment(result.predicted_disease || "", severity, {
+      confidence: result.confidence || "",
+      matchedSymptoms: Array.isArray(result.matched_symptoms)
+        ? result.matched_symptoms
+        : [],
+      riskScore: topCandidate?.hybrid_score ?? null,
+      symptomScore: topCandidate?.symptom_score ?? null,
+      vectorScore: topCandidate?.vector_score ?? null,
+    });
+  }
+
   return (
     <div className="max-w-[min(740px,76%)] max-[720px]:max-w-[calc(100%-45px)] rounded-tl-none rounded-tr-2xl rounded-br-2xl rounded-bl-2xl p-[18px_20px] bg-white border border-[#e8e4dc] shadow-[0_8px_26px_rgba(32,41,56,0.06)] text-[#4c5869] text-sm leading-relaxed">
       <div className="flex items-center justify-between">
@@ -519,9 +557,7 @@ function ResultCard({ result, onBookAppointment }) {
         {result.recommend_appointment && (
           <button
             type="button"
-            onClick={() =>
-              onBookAppointment(result.predicted_disease || "", severity)
-            }
+            onClick={handleBookClick}
             className="flex-1 min-h-[38px] rounded-[9px] bg-[#c94343] text-white font-bold cursor-pointer hover:bg-[#b93838] transition-colors max-[480px]:w-full"
           >
             {appointmentLabel}
@@ -981,6 +1017,7 @@ function AppointmentPage({ context, onBack }) {
       preferredDate: "",
       preferredTime: "",
       notes: "",
+      hospitalId: "",
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }),
     [context]
@@ -989,6 +1026,38 @@ function AppointmentPage({ context, onBack }) {
   const [form, setForm] = useState(buildInitialForm);
   const [status, setStatus] = useState("idle"); // idle | submitting | success | error
   const [errorMsg, setErrorMsg] = useState("");
+
+  const [hospitals, setHospitals] = useState([]);
+  const [hospitalsLoading, setHospitalsLoading] = useState(true);
+  const [hospitalsError, setHospitalsError] = useState("");
+
+  // Load the hospital list once, when the booking page mounts.
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadHospitals() {
+      setHospitalsLoading(true);
+      try {
+        const list = await fetchHospitalsRequest();
+        if (isMounted) {
+          setHospitals(list);
+          setHospitalsError("");
+        }
+      } catch (err) {
+        if (isMounted) {
+          setHospitalsError(err.message || "Could not load hospitals.");
+        }
+      } finally {
+        if (isMounted) setHospitalsLoading(false);
+      }
+    }
+
+    loadHospitals();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -1003,8 +1072,8 @@ function AppointmentPage({ context, onBack }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.fullName || !form.phone || !form.preferredDate) {
-      setErrorMsg("Please fill in name, phone, and a preferred date.");
+    if (!form.fullName || !form.phone || !form.preferredDate || !form.hospitalId) {
+      setErrorMsg("Please fill in name, phone, hospital, and a preferred date.");
       return;
     }
 
@@ -1017,6 +1086,11 @@ function AppointmentPage({ context, onBack }) {
         userId: storedProfile.id || undefined,
         disease: context?.disease || "",
         severity: context?.severity || "",
+        confidence: context?.confidence || "",
+        riskScore: context?.riskScore ?? null,
+        symptomScore: context?.symptomScore ?? null,
+        vectorScore: context?.vectorScore ?? null,
+        matchedSymptoms: context?.matchedSymptoms || [],
       });
       setStatus("success");
     } catch (err) {
@@ -1026,6 +1100,8 @@ function AppointmentPage({ context, onBack }) {
   }
 
   if (status === "success") {
+    const selectedHospital = hospitals.find((h) => h._id === form.hospitalId);
+
     return (
       <main className="flex-1 min-w-0 h-screen flex flex-col items-center justify-center bg-[#fdfcf9] px-6 text-center">
         <div className="w-16 h-16 grid place-items-center rounded-full bg-[#d8f3e3] text-[#0f5946] mb-5">
@@ -1033,7 +1109,8 @@ function AppointmentPage({ context, onBack }) {
         </div>
         <h2 className="text-2xl font-bold text-[#202938] mb-2">Appointment booked</h2>
         <p className="text-[#7d8796] max-w-sm mb-8">
-          We've scheduled your visit for {form.reason || "your consultation"} on{" "}
+          We've scheduled your visit for {form.reason || "your consultation"}
+          {selectedHospital ? ` at ${selectedHospital.hospitalName}` : ""} on{" "}
           {form.preferredDate}
           {form.preferredTime ? ` at ${form.preferredTime}` : ""}. A confirmation will be
           sent to {form.email || "your registered contact"}.
@@ -1074,8 +1151,13 @@ function AppointmentPage({ context, onBack }) {
           {context?.disease && (
             <div className="mb-6 px-4 py-3 rounded-xl bg-[#effaf4] border border-[#d8f3e3] text-sm text-[#146b55]">
               Booking a consultation for <strong>{context.disease}</strong>
-              {context.severity ? ` · ${context.severity} severity` : ""}. Fields below
-              were auto-filled from your saved profile — feel free to edit them.
+              {context.severity ? ` · ${context.severity} severity` : ""}
+              {context.confidence ? ` · ${context.confidence} confidence` : ""}
+              {typeof context.riskScore === "number"
+                ? ` · risk score ${context.riskScore.toFixed(2)}`
+                : ""}
+              . Fields below were auto-filled from your saved profile — feel free to edit
+              them.
             </div>
           )}
 
@@ -1085,7 +1167,45 @@ function AppointmentPage({ context, onBack }) {
             </div>
           )}
 
+          {hospitalsError && (
+            <div className="mb-6 px-4 py-3 rounded-xl border border-[#f3caca] bg-[#fff4f4] text-[#a62f2f] text-sm">
+              {hospitalsError}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4 max-[480px]:grid-cols-1">
+            {/* Hospital selection — placed first so it's the top priority
+                choice, and spans both columns since it's the most important
+                decision the person makes on this form. */}
+            <Field label="Select hospital" required full>
+              <div className="relative">
+                <select
+                  value={form.hospitalId}
+                  onChange={(e) => updateField("hospitalId", e.target.value)}
+                  disabled={hospitalsLoading || hospitals.length === 0}
+                  className={`${inputClasses} appearance-none disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  <option value="">
+                    {hospitalsLoading
+                      ? "Loading hospitals..."
+                      : hospitals.length === 0
+                      ? "No hospitals available"
+                      : "-- Choose a hospital --"}
+                  </option>
+                  {hospitals.map((h) => (
+                    <option key={h._id} value={h._id}>
+                      {h.hospitalName}
+                      {h.address?.city ? ` — ${h.address.city}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <Building2
+                  size={16}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9aa4b2] pointer-events-none"
+                />
+              </div>
+            </Field>
+
             <Field label="Full name" required>
               <input
                 type="text"
@@ -1544,8 +1664,10 @@ export default function Chatbot() {
     toggleRecording,
   } = useChat();
 
-  function handleBookAppointment(disease, severity) {
-    setAppointmentContext({ disease, severity });
+  // Now receives the extra risk details (confidence, matched symptoms, hybrid
+  // score) alongside the disease + severity that were already being passed.
+  function handleBookAppointment(disease, severity, riskDetails = {}) {
+    setAppointmentContext({ disease, severity, ...riskDetails });
     setView("appointment");
   }
 

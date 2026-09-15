@@ -9,7 +9,7 @@ import cors from "cors"
 import { urlencoded } from "body-parser"
 import { signup, verifyOTP, login, updateProfile } from './controller/Auth.controller.js';
 import { saveChat, getMyChats, getMySessions, getAllSessionsByUser, getChatHistoryBySession } from "./controller/Chat.controller.js"
-import { bookAppointment, getMyAppointments, getAllAppointments } from "./controller/Appointment.controller.js"
+import { bookAppointment, getMyAppointments, getAllAppointments ,getQueueAppointments, updateAppointmentStatus} from "./controller/Appointment.controller.js"
 import { addHospital, getAllHospitals,loginHospital } from "./controller/Hospital.controller.js"
 import verifyToken from "./middleware/auth.middleware.js"
 import isAdmin from "./middleware/Admin.middleware.js"
@@ -71,6 +71,9 @@ app.get("/chat/history/:sessionId", verifyToken, getChatHistoryBySession);
 app.post('/appointments/book', verifyToken, bookAppointment)
 app.get('/appointments/mine', verifyToken, getMyAppointments)
 app.get("/appointments/all", verifyToken, getAllAppointments);
+app.get("/appointments/queue", verifyToken, getQueueAppointments);   // ✅ fixed
+app.patch("/appointments/:id/status", verifyToken, updateAppointmentStatus);
+app.get("/hospital/all", verifyToken, getAllHospitals);
 
 // ---> Admin routes <---
 app.post('/admin/add-hospital', verifyToken, isAdmin, addHospital)
