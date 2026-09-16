@@ -31,7 +31,7 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5500"],
+    origin: ["http://localhost:5173", "https://upchar-project-dvca.vercel.app"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"]
   })
