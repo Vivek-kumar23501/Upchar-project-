@@ -398,15 +398,15 @@ const HospitalDashboard = () => {
   // hospitalId, so only doctors belonging to THIS hospital ever render -
   // even if the backend's own filtering is loose or missing.
   const doctorBelongsToHospital = (doctor, hospitalId) => {
-    if (!hospitalId) return false;
+  if (!hospitalId) return false;
 
-    const docHospitalId =
-      typeof doctor?.hospitalId === "object" && doctor?.hospitalId !== null
-        ? doctor.hospitalId._id
-        : doctor?.hospitalId;
+  const docHospitalId =
+    typeof doctor?.hospital === "object" && doctor?.hospital !== null
+      ? doctor.hospital._id
+      : doctor?.hospital;
 
-    return String(docHospitalId) === String(hospitalId);
-  };
+  return String(docHospitalId) === String(hospitalId);
+};
 
   // ---------------------------------------------------
   // Logout
