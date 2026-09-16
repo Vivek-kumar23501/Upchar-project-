@@ -47,7 +47,7 @@ function Teleconsultation() {
             setError("");
 
             const response = await axios.post(
-                "http://localhost:8080/api/video/token",
+                "https://upchar-project.onrender.com/api/video/token",
                 {
                     userId,
                     name,

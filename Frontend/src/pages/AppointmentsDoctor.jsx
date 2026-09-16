@@ -15,7 +15,7 @@ import {
 // API CONFIGURATION — match these to your existing setup
 // ============================================================
 
-const NODE_API_BASE = "http://localhost:8080";
+const NODE_API_BASE = "https://upchar-project.onrender.com";
 const APPOINTMENTS_ALL_URL = `${NODE_API_BASE}/appointments/all`;
 const APPOINTMENT_STATUS_URL = (id) => `${NODE_API_BASE}/appointments/${id}/status`;
 

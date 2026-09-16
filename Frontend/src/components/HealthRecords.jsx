@@ -88,7 +88,7 @@ export default function HealthRecords({ user }) {
                 };
 
                 // Step B: Save record metadata to MongoDB so it persists on refresh
-                const dbResponse = await fetch(`http://localhost:8080/api/auth/records/${userId}`, {
+                const dbResponse = await fetch(`https://upchar-project.onrender.com/api/auth/records/${userId}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(newRecord)

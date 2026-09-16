@@ -409,7 +409,7 @@ try {
 
             // 2. Send Data to Backend
             const response = await fetch(
-                'http://localhost:8080/signup',
+                'https://upchar-project.onrender.com/signup',
                 {
                     method: 'POST',
                     headers: {

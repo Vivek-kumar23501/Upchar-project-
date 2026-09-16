@@ -24,7 +24,7 @@ import {
   Clock,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "https://upchar-project.onrender.com";
 
 // Sidebar navigation sections
 const sidebarSections = [

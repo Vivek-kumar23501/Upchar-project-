@@ -12,7 +12,7 @@ import {
   Activity,
 } from "lucide-react";
 
-const API_BASE = "http://localhost:8080";
+const API_BASE = "https://upchar-project.onrender.com";
 
 export default function DoctorLogin() {
   const navigate = useNavigate();

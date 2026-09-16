@@ -36,7 +36,7 @@ const hospitalTypes = [
 ];
 
 // Backend base URL
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "https://upchar-project.onrender.com";
 
 export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState("overview");

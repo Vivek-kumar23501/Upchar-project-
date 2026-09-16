@@ -103,7 +103,7 @@ export default function ProfileModal({ isOpen, onClose, user, setUser, profileIm
             setMessage({ text: 'Verifying password and updating...', type: 'success' });
             
             // Adjust this URL to your local/production backend endpoint
-            const response = await fetch(`http://localhost:8080/update/${user.id}`, {
+            const response = await fetch(`https://upchar-project.onrender.com/update/${user.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

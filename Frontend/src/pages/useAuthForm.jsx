@@ -351,8 +351,8 @@ export default function useAuthForm() {
 
       const url =
         authAction === 'signup'
-          ? 'http://localhost:8080/signup'
-          : 'http://localhost:8080/login';
+          ? 'https://upchar-project.onrender.com/signup'
+          : 'https://upchar-project.onrender.com/login';
 
       const response = await fetch(url, {
         method: 'POST',

@@ -56,7 +56,7 @@ export default function VerifyOTP() {
             setIsSubmitting(true);
 
             const response = await fetch(
-                'http://localhost:8080/verify-otp',
+                'https://upchar-project.onrender.com/verify-otp',
                 {
                     method: 'POST',
                     headers: {

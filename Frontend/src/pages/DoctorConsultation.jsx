@@ -68,7 +68,7 @@ function DoctorConsultation() {
             setError("");
 
             const response = await axios.post(
-                "http://localhost:8080/api/video/token",
+                "https://upchar-project.onrender.com/api/video/token",
                 {
                     userId: doctorId,
                     name: doctorName,

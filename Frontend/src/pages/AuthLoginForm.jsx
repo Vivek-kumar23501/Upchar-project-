@@ -33,7 +33,7 @@ export default function AuthLoginForm() {
         try {
             setIsSubmitting(true);
 
-            const response = await fetch('http://localhost:8080/login', {
+            const response = await fetch('https://upchar-project.onrender.com/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

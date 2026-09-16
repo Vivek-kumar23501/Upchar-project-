@@ -30,7 +30,7 @@ import {
 // ============================================================
 
 const RAG_API_BASE = "http://localhost:5002";
-const NODE_API_BASE = "http://localhost:8080";
+const NODE_API_BASE = "https://upchar-project.onrender.com";
 
 const TEXT_API_URL = `${RAG_API_BASE}/rag-chat`;
 const VOICE_API_URL = `${RAG_API_BASE}/voice-chat`;
